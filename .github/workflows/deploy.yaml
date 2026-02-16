@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy MultiDocker
 on:
   push:
     branches:
@@ -10,19 +10,29 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-      - run: docker build -t jma35507-crypto/react-test -f Dockerfile.dev .
-      #- run: docker run -e CI=true jma35507-crypto/react-test npm test
+      - run: docker build -t jma35507-crypto/react-test -f -f ./client/Dockerfile.dev ./client
+      - run: docker run -e CI=true jma35507-crypto/react-test npm test
  
+      - run: docker build -t jma35507-crypto/multi-client ./client
+      - run: docker build -t jma35507-crypto/multi-ngnix ./nginx
+      - run: docker build -t jma35507-crypto/multi-server ./server
+      - run: docker build -t jma35507-crypto/multi-client ./worker
+
+      - run: docker push jma35507-crypto/multi-client
+      - run: docker push jma35507-crypto/multi-nginx
+      - run: docker push jma35507-crypto/multi-server
+      - run: docker push jma35507-crypto/multi-worker
+
       - name: Generate deployment package
-        run: zip -r deploy.zip . -x '*.git*'
+        run: zip -r deploy.zip -x '*.git*'
  
       - name: Deploy to EB
-        uses: einaregilsson/beanstalk-deploy@v21
+        uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: frontend
-          environment_name: Frontend-env
+          application_name: multi-jm
+          environment_name: Multijm-env
           existing_bucket_name: elasticbeanstalk-us-east-1-216989102990
           region: us-east-1
           version_label: ${{ github.sha }}
